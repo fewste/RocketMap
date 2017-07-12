@@ -9,6 +9,9 @@ var $textPerfectionNotify
 var $selectStyle
 var $selectIconSize
 var $switchOpenGymsOnly
+var $switchRaidOnly
+var $switchActiveRaidGymsOnly
+var $switchRaidMinLevel
 var $selectTeamGymsOnly
 var $selectLastUpdateGymsOnly
 var $selectMinGymLevel
@@ -360,6 +363,10 @@ function initSidebar() {
     $('#gym-sidebar-wrapper').toggle(Store.get('showGyms'))
     $('#gyms-filter-wrapper').toggle(Store.get('showGyms'))
     $('#team-gyms-only-switch').val(Store.get('showTeamGymsOnly'))
+    $('#raid-gym-switch').prop('checked', Store.get('showRaidsOnly'))
+    $('#raid-active-gym-switch').prop('checked', Store.get('showActiveRaidsOnly'))
+    $('#raid-level-only-switch').val(Store.get('showRaidMinLevel'))
+    $('#raids-filter-wrapper').toggle(Store.get('showRaidsOnly'))
     $('#open-gyms-only-switch').prop('checked', Store.get('showOpenGymsOnly'))
     $('#min-level-gyms-filter-switch').val(Store.get('minGymLevel'))
     $('#max-level-gyms-filter-switch').val(Store.get('maxGymLevel'))
@@ -840,6 +847,14 @@ function getPokemonLevel(cpMultiplier) {
 
 function getGymLevel(gym) {
     return 6 - gym['slots_available']
+}
+
+function getRaidLevel(raid) {
+    if (raid === null) {
+        return 0
+    } else {
+        return raid.level
+    }
 }
 
 function lpad(str, len, padstr) {
@@ -1470,6 +1485,7 @@ function updatePokestops() {
 
 function processGyms(i, item) {
     var gymLevel = getGymLevel(item)
+    var raidLevel = getRaidLevel(item.raid)
     if (!Store.get('showGyms')) {
         return false // in case the checkbox was unchecked in the meantime.
     }
@@ -1489,6 +1505,26 @@ function processGyms(i, item) {
             removeGymFromMap(item['gym_id'])
             return true
         }
+    }
+
+
+    if (Store.get('showRaidsOnly')) {
+        if (raidLevel === 0) {
+            removeGymFromMap(item['gym_id'])
+            return true
+        }
+    }
+
+    if (Store.get('showRaidsOnly') && Store.get('showActiveRaidsOnly')) {
+        if (item.raid === null || !isOngoingRaid(item.raid)) {
+            removeGymFromMap(item['gym_id'])
+            return true
+        }
+    }
+
+    if (Store.get('showRaidsOnly') && Store.get('showRaidMinLevel') && raidLevel < Store.get('showRaidMinLevel')) {
+        removeGymFromMap(item['gym_id'])
+        return true
     }
 
     if (Store.get('showTeamGymsOnly') && Store.get('showTeamGymsOnly') !== item.team_id) {
@@ -2115,6 +2151,36 @@ $(function () {
         updateMap()
     })
 
+    $switchRaidOnly = $('#raid-gym-switch')
+
+    $switchRaidOnly.on('change', function () {
+        Store.set('showRaidsOnly', this.checked)
+        lastgyms = false
+        updateMap()
+    })
+
+    $switchActiveRaidGymsOnly = $('#raid-active-gym-switch')
+
+    $switchActiveRaidGymsOnly.on('change', function () {
+        Store.set('showActiveRaidsOnly', this.checked)
+        lastgyms = false
+        updateMap()
+    })
+
+    $switchRaidMinLevel = $('#raid-level-only-switch')
+
+    $switchRaidMinLevel.select2({
+        placeholder: 'Only Show Raid Gyms starting from choosed level',
+        minimumResultsForSearch: Infinity
+    })
+
+    $switchRaidMinLevel.on('change', function () {
+        Store.set('showRaidMinLevel', this.value)
+        lastgyms = false
+        updateMap()
+    })
+
+
     $selectTeamGymsOnly = $('#team-gyms-only-switch')
 
     $selectTeamGymsOnly.select2({
@@ -2397,7 +2463,6 @@ $(function () {
             }
         }
     }
-
     // Setup UI element interactions
     $('#gyms-switch').change(function () {
         var options = {
@@ -2420,6 +2485,17 @@ $(function () {
             wrapper2.hide(options)
         }
         buildSwitchChangeListener(mapData, ['gyms'], 'showGyms').bind(this)()
+    })
+    $('#raid-gym-switch').change(function () {
+        var options = {
+            'duration': 500
+        }
+        var wrapper = $('#raids-filter-wrapper')
+        if (this.checked) {
+            wrapper.show(options)
+        } else {
+            wrapper.hide(options)
+        }
     })
     $('#pokemon-switch').change(function () {
         buildSwitchChangeListener(mapData, ['pokemons'], 'showPokemon').bind(this)()

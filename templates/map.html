@@ -89,6 +89,40 @@
             </div>
               {% endif %}
             <div id="gyms-filter-wrapper" style="display:none">
+              {% if show.raids %}
+              <div class="form-control switch-container" id="raid-gym-wrapper">
+                <h3>Raids Only</h3>
+                <div class="onoffswitch">
+                  <input id="raid-gym-switch" type="checkbox" name="raid-gym-switch" class="onoffswitch-checkbox" checked>
+                  <label class="onoffswitch-label" for="raid-gym-switch">
+                  <span class="switch-label" data-on="On" data-off="Off"></span>
+                  <span class="switch-handle"></span>
+                  </label>
+                </div>
+              </div>
+              <div id="raids-filter-wrapper" style="display:none">
+                <div class="form-control switch-container" id="raid-active-gym-wrapper">
+                  <h3>Active Raids</h3>
+                  <div class="onoffswitch">
+                    <input id="raid-active-gym-switch" type="checkbox" name="raid-active-gym-switch" class="onoffswitch-checkbox" checked>
+                    <label class="onoffswitch-label" for="raid-active-gym-switch">
+                    <span class="switch-label" data-on="On" data-off="Off"></span>
+                    <span class="switch-handle"></span>
+                    </label>
+                  </div>
+                </div>
+                <div class="form-control switch-container" id="raid-level-only-wrapper">
+                  <select name="raid-level-only-switch" id="raid-level-only-switch">
+                    <option value="0">All</option>
+                    <option value="1">Level 1</option>
+                    <option value="2">Level 2</option>
+                    <option value="3">Level 3</option>
+                    <option value="4">Level 4</option>
+                    <option value="5">Level 5</option>
+                  </select>
+                </div>
+              </div>
+              {% endif %}
               <div class="form-control switch-container" id="team-gyms-only-wrapper">
                 <h3>Team</h3>
                 <select name="team-gyms-filter-switch" id="team-gyms-only-switch">
@@ -144,7 +178,7 @@
                 </select>
               </div>
             </div>
-              {% endif %}
+              {% endif %}			  
               {% if show.pokestops %}
             <div class="form-control switch-container">
               <h3>Pokéstops</h3>
