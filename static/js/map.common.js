@@ -866,15 +866,7 @@ var StoreOptions = {
         default: '',
         type: StoreTypes.Number
     },
-    'showGyms': {
-        default: false,
-        type: StoreTypes.Boolean
-    },
-    'useGymSidebar': {
-        default: false,
-        type: StoreTypes.Boolean
-    },
-    'showRaidsOnly': {
+    'showRaids': {
         default: false,
         type: StoreTypes.Boolean
     },
@@ -885,6 +877,18 @@ var StoreOptions = {
     'showRaidMinLevel': {
         default: 1,
         type: StoreTypes.Number
+    },
+    'showRaidMaxLevel': {
+        default: 5,
+        type: StoreTypes.Number
+    },
+    'showGyms': {
+        default: false,
+        type: StoreTypes.Boolean
+    },
+    'useGymSidebar': {
+        default: false,
+        type: StoreTypes.Boolean
     },
     'showOpenGymsOnly': {
         default: false,
