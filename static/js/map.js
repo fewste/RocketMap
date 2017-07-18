@@ -547,6 +547,14 @@ function isOngoingRaid(raid) {
     return raid && Date.now() < raid.end && Date.now() > raid.start
 }
 
+function isGymSatisfiesRaidMinMaxFilter(raid) {
+    if (raid === null) {
+        return 0
+    } else {
+        return (raid['level'] <= Store.get('showRaidMaxLevel') && raid['level'] >= Store.get('showRaidMinLevel')) ? 1 : 0
+    }
+}
+
 function gymLabel(gym, includeMembers = true) {
     const pokemonWithImages = [
         3, 6, 9, 59, 65, 68, 89, 94, 103, 110, 112, 125, 126, 129, 131, 134,
@@ -576,6 +584,8 @@ function gymLabel(gym, includeMembers = true) {
     const teamName = gymTypes[gym.team_id]
     const isUpcomingRaid = raid != null && Date.now() < raid.start
     const isRaidStarted = isOngoingRaid(raid)
+    const isRaidFilterOn = Store.get('showRaids')
+    const isActiveRaidFilterOn = Store.get('showActiveRaidsOnly')
 
     var subtitle = ''
     var image = ''
@@ -600,7 +610,7 @@ function gymLabel(gym, includeMembers = true) {
         </div>`
     }
 
-    if (isUpcomingRaid || isRaidStarted) {
+    if ((isUpcomingRaid || isRaidStarted) && isRaidFilterOn && isGymSatisfiesRaidMinMaxFilter(raid) && !isActiveRaidFilterOn) {
         const raidColor = ['252,112,176', '255,158,22']
         const levelStr = '★'.repeat(raid['level'])
 
@@ -674,7 +684,7 @@ function gymLabel(gym, includeMembers = true) {
         </div>`
 
 
-    if (!isRaidStarted && includeMembers) {
+    if (includeMembers) {
         memberStr = '<div>'
 
         gym.pokemon.forEach((member) => {
@@ -853,7 +863,7 @@ function getRaidLevel(raid) {
     if (raid === null) {
         return 0
     } else {
-        return raid.level
+        return raid['level']
     }
 }
 
@@ -1026,13 +1036,14 @@ function setupGymMarker(item) {
 }
 
 function updateGymMarker(item, marker) {
-    if (item.raid !== null && item.raid.end > Date.now() && item.raid.pokemon_id !== null && Store.get('showRaids') && getRaidLevel(item.raid) >= Store.get('showRaidMinLevel') && getRaidLevel(item.raid) <= Store.get('showRaidMinLevel')) {
+    let raidLevel = getRaidLevel(item.raid)
+    if (item.raid !== null && item.raid.end > Date.now() && item.raid.pokemon_id !== null && Store.get('showRaids') && raidLevel >= Store.get('showRaidMinLevel') && raidLevel <= Store.get('showRaidMaxLevel')) {
         marker.setIcon({
-            url: 'static/images/raid/' + item.raid.pokemon_id + '.png',
+            url: 'static/images/raid/' + item['raid']['pokemon_id'] + '.png',
             scaledSize: new google.maps.Size(48, 48)
         })
         marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1)
-    } else if (item.raid !== null && item.raid.end > Date.now() && Store.get('showRaids') && !Store.get('showActiveRaidsOnly') && getRaidLevel(item.raid) >= Store.get('showRaidMinLevel') && getRaidLevel(item.raid) <= Store.get('showRaidMinLevel')) {
+    } else if (item.raid !== null && item.raid.end > Date.now() && Store.get('showRaids') && !Store.get('showActiveRaidsOnly') && raidLevel >= Store.get('showRaidMinLevel') && raidLevel <= Store.get('showRaidMaxLevel')) {
         marker.setIcon({
             url: 'static/images/gym/' + gymTypes[item.team_id] + '_' + getGymLevel(item) + '_' + item['raid']['level'] + '.png',
             scaledSize: new google.maps.Size(48, 48)
@@ -1508,25 +1519,26 @@ function processGyms(i, item) {
         }
     }
 
-    if (!Store.get('showGyms') && Store.get('showRaids')) {
-        if (raidLevel === 0) {
+    if (!Store.get('showGyms')) {
+        if (Store.get('showRaids')) {
+            if (raidLevel === 0) {
+                removeGymFromMap(item['gym_id'])
+                return true
+            }
+        }
+
+        if (Store.get('showActiveRaidsOnly')) {
+            if (raidLevel === 0 || !isOngoingRaid(item.raid)) {
+                removeGymFromMap(item['gym_id'])
+                return true
+            }
+        }
+
+        if (raidLevel > Store.get('showRaidMaxLevel') || raidLevel < Store.get('showRaidMinLevel')) {
             removeGymFromMap(item['gym_id'])
             return true
         }
     }
-
-    if (!Store.get('showGyms') && Store.get('showActiveRaidsOnly')) {
-        if (raidLevel === 0 || !isOngoingRaid(item.raid)) {
-            removeGymFromMap(item['gym_id'])
-            return true
-        }
-    }
-
-    if (!Store.get('showGyms') && Store.get('showRaidMinLevel') && raidLevel < Store.get('showRaidMinLevel')) {
-        removeGymFromMap(item['gym_id'])
-        return true
-    }
-
 
     if (Store.get('showTeamGymsOnly') && Store.get('showTeamGymsOnly') !== item.team_id) {
         removeGymFromMap(item['gym_id'])
@@ -1931,13 +1943,11 @@ function showGymDetails(id) { // eslint-disable-line no-unused-vars
     data.done(function (result) {
         var pokemonHtml = ''
         if (result.pokemon.length) {
-            if (!isOngoingRaid(result.raid)) {
-                result.pokemon.forEach((pokemon) => {
-                    pokemonHtml += getSidebarGymMember(pokemon)
-                })
+            result.pokemon.forEach((pokemon) => {
+                pokemonHtml += getSidebarGymMember(pokemon)
+            })
 
-                pokemonHtml = `<table><tbody>${pokemonHtml}</tbody></table>`
-            }
+            pokemonHtml = `<table><tbody>${pokemonHtml}</tbody></table>`
         } else if (result.team_id === 0) {
             pokemonHtml = ''
         } else {
