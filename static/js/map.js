@@ -565,15 +565,15 @@ function gymLabel(gym, includeMembers = true) {
     var raidStr = ''
     if (raid && raid.end > Date.now()) {
         if (raid.pokemon_id !== null) {
-            let pMove1 = (moves[raid['move_1']] !== undefined) ? i8ln(moves[raid['move_1']]['name']) : 'gen/unknown'
-            let pMove2 = (moves[raid['move_2']] !== undefined) ? i8ln(moves[raid['move_2']]['name']) : 'gen/unknown'
+            let pMove1 = (moves[raid['move_1']] !== undefined) ? i8ln(moves[raid['move_1']]['name']) : 'unknown'
+            let pMove2 = (moves[raid['move_2']] !== undefined) ? i8ln(moves[raid['move_2']]['name']) : 'unknown'
 
             raidStr += `
-                    <div class='raid encounter'>
-                       CP: <span class='raid encounter info'>${raid['cp']}</span>
+                    <div class='move'>
+                      <span class='name'>${pMove1}</span><span class='type ${moves[raid['move_1']]['type'].toLowerCase()}'>${i8ln(moves[raid['move_1']]['type'])}</span>
                     </div>
-                    <div class='raid encounter'>
-                         Moveset: <span class='raid encounter info'>${pMove1}/${pMove2}</span>
+                    <div class='move'>
+                      <span class='name'>${pMove2}</span><span class='type ${moves[raid['move_2']]['type'].toLowerCase()}'>${i8ln(moves[raid['move_2']]['type'])}</span>
                     </div>`
         }
     }
@@ -585,7 +585,6 @@ function gymLabel(gym, includeMembers = true) {
     const isUpcomingRaid = raid != null && Date.now() < raid.start
     const isRaidStarted = isOngoingRaid(raid)
     const isRaidFilterOn = Store.get('showRaids')
-    const isActiveRaidFilterOn = Store.get('showActiveRaidsOnly')
 
     var subtitle = ''
     var image = ''
@@ -610,22 +609,41 @@ function gymLabel(gym, includeMembers = true) {
         </div>`
     }
 
-    if ((isUpcomingRaid || isRaidStarted) && isRaidFilterOn && isGymSatisfiesRaidMinMaxFilter(raid) && !isActiveRaidFilterOn) {
+    if ((isUpcomingRaid || isRaidStarted) && isRaidFilterOn && isGymSatisfiesRaidMinMaxFilter(raid)) {
         const raidColor = ['252,112,176', '255,158,22']
         const levelStr = '★'.repeat(raid['level'])
 
         if (isRaidStarted && raid.pokemon_id) {
             // Set default image.
             image = `
-                <img class='gym sprite' src='static/images/raid/unknown.png'>
+                <img class='gym sprite' src='static/images/raid/${gymTypes[gym.team_id]}_unknown.png'>
                 ${raidStr}
             `
 
             // Use Pokémon-specific image if we have one.
             if (pokemonWithImages.indexOf(raid.pokemon_id) !== -1) {
                 image = `
-                    <img class='gym sprite' src='static/images/raid/${raid.pokemon_id}.png'>
-                    ${raidStr}
+                    <div class='raid container'>
+                      <div class='raid container content-left'>
+                        <div>
+                          <img class='gym sprite' src='static/icons/${raid.pokemon_id}.png'>
+                        </div>
+                      </div>
+                      <div class='raid container content-right'>
+                        <div>
+                        <div class='raid pokemon'>
+                             ${raid['pokemon_name']} <a href='http://pokemon.gameinfo.io/en/pokemon/${raid['pokemon_id']}' target='_blank' title='View in Pokédex'>#${raid['pokemon_id']}</a> | CP: ${raid['cp']}
+                     </div>
+                          ${raidStr}
+                      </div>
+                    </div>
+                  </div>
+                    <div class='raid'>
+                      <span style='color:rgb(${raidColor[Math.floor((raid.level - 1) / 2)]})'>
+                      ${levelStr}
+                      </span>
+                      <span class='raid countdown label-countdown' disappears-at='${raid.end}'></span> left
+                    </div>
                 `
             }
         } else {
@@ -639,25 +657,6 @@ function gymLabel(gym, includeMembers = true) {
                   ${levelStr}
                   </span>
                   Raid in <span class='raid countdown label-countdown' disappears-at='${raid.start}'></span>
-                </div>`
-        } else {
-            let typesDisplay = ''
-
-            $.each(raid.pokemon_types, function (index, type) {
-                typesDisplay += getTypeSpan(type)
-            })
-
-            subtitle = `
-                <div class='raid'>
-                  <span style='color:rgb(${raidColor[Math.floor((raid.level - 1) / 2)]})'>
-                  ${levelStr}
-                  </span>
-                  <span class='raid countdown label-countdown' disappears-at='${raid.end}'></span> left
-                </div>
-                   <div class='raid pokemon name'>
-                        ${raid['pokemon_name']}
-                            <a href='http://pokemon.gameinfo.io/en/pokemon/${raid['pokemon_id']}' target='_blank' title='View in Pokédex'>#${raid['pokemon_id']}</a>
-                        ${typesDisplay}
                 </div>`
         }
     } else {
@@ -1039,7 +1038,7 @@ function updateGymMarker(item, marker) {
     let raidLevel = getRaidLevel(item.raid)
     if (item.raid !== null && item.raid.end > Date.now() && item.raid.pokemon_id !== null && Store.get('showRaids') && raidLevel >= Store.get('showRaidMinLevel') && raidLevel <= Store.get('showRaidMaxLevel')) {
         marker.setIcon({
-            url: 'static/images/raid/' + item['raid']['pokemon_id'] + '.png',
+            url: 'static/images/raid/' + gymTypes[item.team_id] + '_' + item['raid']['pokemon_id'] + '.png',
             scaledSize: new google.maps.Size(48, 48)
         })
         marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1)
