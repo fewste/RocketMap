@@ -613,36 +613,35 @@ function gymLabel(gym, includeMembers = true) {
         const raidColor = ['252,112,176', '255,158,22']
         const levelStr = '★'.repeat(raid['level'])
 
-        if (isRaidStarted && raid.pokemon_id) {
+        if (isRaidStarted) {
             // Set default image.
             image = `
                 <img class='gym sprite' src='static/images/raid/${gymTypes[gym.team_id]}_unknown.png'>
                 ${raidStr}
             `
-
             // Use Pokémon-specific image if we have one.
-            if (pokemonWithImages.indexOf(raid.pokemon_id) !== -1) {
+            if (raid.pokemon_id !== null && pokemonWithImages.indexOf(raid.pokemon_id) !== -1) {
                 image = `
                     <div class='raid container'>
-                      <div class='raid container content-left'>
+                    <div class='raid container content-left'>
                         <div>
-                          <img class='gym sprite' src='static/icons/${raid.pokemon_id}.png'>
+                        <img class='gym sprite' src='static/icons/${raid.pokemon_id}.png'>
                         </div>
-                      </div>
-                      <div class='raid container content-right'>
+                    </div>
+                    <div class='raid container content-right'>
                         <div>
                         <div class='raid pokemon'>
-                             ${raid['pokemon_name']} <a href='http://pokemon.gameinfo.io/en/pokemon/${raid['pokemon_id']}' target='_blank' title='View in Pokédex'>#${raid['pokemon_id']}</a> | CP: ${raid['cp']}
-                     </div>
-                          ${raidStr}
-                      </div>
+                            ${raid['pokemon_name']} <a href='http://pokemon.gameinfo.io/en/pokemon/${raid['pokemon_id']}' target='_blank' title='View in Pokédex'>#${raid['pokemon_id']}</a> | CP: ${raid['cp']}
                     </div>
-                  </div>
+                        ${raidStr}
+                    </div>
+                    </div>
+                </div>
                     <div class='raid'>
-                      <span style='color:rgb(${raidColor[Math.floor((raid.level - 1) / 2)]})'>
-                      ${levelStr}
-                      </span>
-                      <span class='raid countdown label-countdown' disappears-at='${raid.end}'></span> left
+                    <span style='color:rgb(${raidColor[Math.floor((raid.level - 1) / 2)]})'>
+                    ${levelStr}
+                    </span>
+                    <span class='raid countdown label-countdown' disappears-at='${raid.end}'></span> left
                     </div>
                 `
             }
@@ -1036,9 +1035,17 @@ function setupGymMarker(item) {
 
 function updateGymMarker(item, marker) {
     let raidLevel = getRaidLevel(item.raid)
-    if (item.raid !== null && item.raid.end > Date.now() && item.raid.pokemon_id !== null && Store.get('showRaids') && raidLevel >= Store.get('showRaidMinLevel') && raidLevel <= Store.get('showRaidMaxLevel')) {
+    const pokemonWithImages = [
+        3, 6, 9, 59, 65, 68, 89, 94, 103, 110, 112, 125, 126, 129, 131, 134,
+        135, 136, 143, 153, 156, 159, 248
+    ]
+    if (item.raid !== null && isOngoingRaid(item.raid) && Store.get('showRaids') && raidLevel >= Store.get('showRaidMinLevel') && raidLevel <= Store.get('showRaidMaxLevel')) {
+        let markerImage = 'static/images/raid/' + gymTypes[item.team_id] + '_unknown.png'
+        if (pokemonWithImages.indexOf(item.raid.pokemon_id) !== -1) {
+            markerImage = 'static/images/raid/' + gymTypes[item.team_id] + '_' + item['raid']['pokemon_id'] + '.png'
+        }
         marker.setIcon({
-            url: 'static/images/raid/' + gymTypes[item.team_id] + '_' + item['raid']['pokemon_id'] + '.png',
+            url: markerImage,
             scaledSize: new google.maps.Size(48, 48)
         })
         marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1)
@@ -2440,13 +2447,12 @@ $(function () {
     function buildSwitchChangeListener(data, dataType, storageKey) {
         return function () {
             Store.set(storageKey, this.checked)
+
             if (this.checked) {
                 // When switch is turned on we asume it has been off, makes sure we dont end up in limbo
                 // Without this there could've been a situation where no markers are on map and only newly modified ones are loaded
                 if (storageKey === 'showPokemon') {
                     lastpokemon = false
-                } else if (storageKey === 'showGyms') {
-                    lastgyms = false
                 } else if (storageKey === 'showPokestops') {
                     lastpokestops = false
                 } else if (storageKey === 'showScanned') {
@@ -2455,6 +2461,24 @@ $(function () {
                     lastspawns = false
                 }
                 updateMap()
+            } else if (storageKey === 'showGyms' || storageKey === 'showRaids') {
+                // if any of switch is enable then do not remove gyms markers, only update them
+                if (Store.get('showGyms') || Store.get('showRaids')) {
+                    lastgyms = false
+                    updateMap()
+                } else {
+                    $.each(dataType, function (d, dType) {
+                        $.each(data[dType], function (key, value) {
+                            // for any marker you're turning off, you'll want to wipe off the range
+                            if (data[dType][key].marker.rangeCircle) {
+                                data[dType][key].marker.rangeCircle.setMap(null)
+                                delete data[dType][key].marker.rangeCircle
+                            }
+                            data[dType][key].marker.setMap(null)
+                        })
+                        data[dType] = {}
+                    })
+                }
             } else {
                 $.each(dataType, function (d, dType) {
                     $.each(data[dType], function (key, value) {
