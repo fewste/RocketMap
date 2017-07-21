@@ -1530,7 +1530,7 @@ function processGyms(i, item) {
     }
 
     if (!Store.get('showGyms')) {
-        if (Store.get('showRaids') && !isValidRaid()) {
+        if (Store.get('showRaids') && !isValidRaid(item.raid)) {
             removeGymFromMap(item['gym_id'])
             return true
         }
